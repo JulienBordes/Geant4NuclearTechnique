@@ -1,0 +1,9 @@
+/gps/pos/type Point
+/gps/pos/centre 0. 0. -1. m
+/gps/direction 0. 0. 1.
+
+/gps/particle ion
+/gps/ion 6 12
+/gps/energy 4800 MeV
+
+/run/beamOn 2000

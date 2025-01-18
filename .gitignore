@@ -1,0 +1,10 @@
+NucTech/build
+*.root
+*.log
+*.out
+*.d
+*.pcm
+*.so
+*.png
+*.jpeg
+.DS_Store
