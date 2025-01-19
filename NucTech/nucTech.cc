@@ -2,6 +2,7 @@
 #include "NucTechDetectorConstruction.hh"
 
 #include "G4EmLivermorePhysics.hh"
+#include "G4HadronicParameters.hh"
 #define G4MULTITHREADED
 #ifdef G4MULTITHREADED
 #include "G4MTRunManager.hh"
@@ -9,6 +10,7 @@
 #include "G4RunManager.hh"
 #endif
 #include "G4PhysListFactory.hh"
+#include "G4RadioactiveDecayPhysics.hh"
 #include "G4StepLimiterPhysics.hh"
 #include "G4UIExecutive.hh"
 #include "G4UImanager.hh"
@@ -52,6 +54,7 @@ int main(int argc, char** argv)
     physListFactory->GetReferencePhysList("FTFP_BERT");
 
   physics->ReplacePhysics(new G4EmLivermorePhysics);
+  physics->ReplacePhysics(new G4RadioactiveDecayPhysics);
   physics->SetVerboseLevel(0);
 
   // Register additional physics
@@ -59,6 +62,9 @@ int main(int argc, char** argv)
 
   // Set Physics List in RunManager
   runManager->SetUserInitialization(physics);
+
+  G4HadronicParameters::Instance()->SetTimeThresholdForRadioactiveDecay(
+    1.0e+60 * CLHEP::year);
 
   // Initialize ActionInitialization
   runManager->SetUserInitialization(new NucTechActionInitialization(outFilename));

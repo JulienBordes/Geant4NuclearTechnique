@@ -67,6 +67,7 @@ set(nucTech_SCRIPTS
   run.mac
   beam.mac
   ionBeam.mac
+  radioactiveSrc.mac
   processSim.C
   )
 

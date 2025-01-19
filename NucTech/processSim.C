@@ -65,7 +65,18 @@ void processSim(
 
   constexpr int spectrumBins = 50;
   constexpr double spectrumMin  = 0.0;
-  constexpr double spectrumMax  = 50.0;
+
+  // Scan the TTree to find the maximum EdepEvent during the simulation
+  double spectrumMax = -1.0;
+  while (reader1.Next()) 
+  {
+    if (*EdepEvent > spectrumMax)
+        spectrumMax = *EdepEvent;
+  }
+
+  spectrumMax *= 1.1;
+
+  reader1.Restart();
 
   TH1D *spectrum = new TH1D("spectrum", "",
                             spectrumBins, spectrumMin, spectrumMax);
@@ -148,7 +159,6 @@ void processSim(
 
   PrintProgressBar(nHits, nHits);
 
-
   // Apply decorations
   HistogramDecoration spectrumDecoration = 
   {
@@ -158,7 +168,7 @@ void processSim(
     "Count", 
     nullptr, 
     0., 
-    50., 
+    spectrumMax, 
     0., 
     0.
   };

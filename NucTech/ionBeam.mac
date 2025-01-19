@@ -6,4 +6,4 @@
 /gps/ion 6 12
 /gps/energy 4800 MeV
 
-/run/beamOn 2000
+/run/beamOn 1

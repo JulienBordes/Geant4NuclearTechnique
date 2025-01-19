@@ -23,7 +23,7 @@ void NucTechPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
   if (evtNb == 0)
   {
     G4cout << "\n" << G4endl;
-    G4cout << "Simulating " << totNbOfEvt << " particles." << G4endl;
+    G4cout << "Simulating " << totNbOfEvt << " events." << G4endl;
   } 
 
   if (totNbOfEvt > ProgressBarLimit)
