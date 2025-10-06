@@ -1,15 +1,20 @@
-# $Id: CMakeLists.txt 86065 2014-11-07 08:51:15Z gcosmo $
-
 #----------------------------------------------------------------------------
 # Setup the project
-cmake_minimum_required(VERSION 2.6 FATAL_ERROR) # Reverted to version 2.6
-project(NucTech)
+cmake_minimum_required(VERSION 3.16...3.27)
+project(nuctech)
+
+#----------------------------------------------------------------------------
+# Enable high-level warnings and treat warnings as errors (optional)
+if(CMAKE_COMPILER_IS_GNUCXX)
+  add_compile_options(-Wall -Wextra -Wpedantic -Wshadow -Wnon-virtual-dtor 
+                      -Wold-style-cast -Wcast-align -Wunused 
+                      -Woverloaded-virtual -Wconversion -Wsign-conversion)
+  # Optional: Uncomment the next line to treat all warnings as errors
+  # add_compile_options(-Werror)
+endif()
 
 #----------------------------------------------------------------------------
 # Find Geant4 package, activating all available UI and Vis drivers by default
-# You can set WITH_GEANT4_UIVIS to OFF via the command line or ccmake/cmake-gui
-# to build a batch mode only executable
-#
 option(WITH_GEANT4_UIVIS "Build example with Geant4 UI and Vis drivers" ON)
 if(WITH_GEANT4_UIVIS)
   find_package(Geant4 REQUIRED ui_all vis_all)
@@ -19,73 +24,44 @@ endif()
 
 #----------------------------------------------------------------------------
 # Setup Geant4 include directories and compile definitions
-# Setup include directory for this project
-#
 include(${Geant4_USE_FILE})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
 #----------------------------------------------------------------------------
 # Locate sources and headers for this project
-# NB: headers are included so they will show up in IDEs
-#
 file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cc)
 file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 
 #----------------------------------------------------------------------------
 # Add the executable, and link it to the Geant4 libraries
-#
-add_executable (nucTech nucTech.cc ${sources} ${headers})
-target_link_libraries(nucTech ${Geant4_LIBRARIES})
+add_executable(nuctech nuctech.cc ${sources} ${headers})
+target_link_libraries(nuctech ${Geant4_LIBRARIES})
 
 #----------------------------------------------------------------------------
-# Integrate clang-tidy for static code analysis
-#
-find_program(CLANG_TIDY_EXECUTABLE NAMES clang-tidy)
-if(CLANG_TIDY_EXECUTABLE)
-  set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXECUTABLE}")
-endif()
+# Copy scripts and configure files
+# List of macros related to simulation (stored in macros/simulation/)
+set(nuctech_FILES
+  macros/beam.mac
+  macros/ion_beam.mac
+  macros/radioactive_source.mac
+  macros/quiet.mac
+  macros/run.mac
+  macros/vis.mac
+)
 
-#----------------------------------------------------------------------------
-# Enable maximum warnings for different compilers
-#
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  target_compile_options(nucTech PRIVATE -Wall -Wextra -pedantic -Wconversion -Wshadow -Wnon-virtual-dtor -Wunused -Woverloaded-virtual -Wold-style-cast)
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  target_compile_options(nucTech PRIVATE -Wall -Wextra -pedantic -Wconversion -Wshadow -Wnon-virtual-dtor -Wunused -Woverloaded-virtual -Wold-style-cast -Wdouble-promotion -Wnull-dereference -Wdocumentation)
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  target_compile_options(nucTech PRIVATE /Wall /WX /permissive-)
-endif()
-
-#----------------------------------------------------------------------------
-# Copy all scripts to the build directory, i.e. the directory in which we
-# build "nucTech". This is so that we can run the executable directly because it
-# relies on these scripts being in the current working directory.
-#
-set(nucTech_SCRIPTS
-  quiet.mac
-  vis.mac
-  run.mac
-  beam.mac
-  ionBeam.mac
-  radioactiveSrc.mac
-  processSim.C
-  )
-
-foreach(_script ${nucTech_SCRIPTS})
+foreach(_file ${nuctech_FILES})
+    # Get the file name (without any directory components)
+    get_filename_component(file_name ${_file} NAME)
     configure_file(
-    ${PROJECT_SOURCE_DIR}/${_script}
-    ${PROJECT_BINARY_DIR}/${_script}
-    COPYONLY
-  )
+      ${PROJECT_SOURCE_DIR}/${_file}
+      ${PROJECT_BINARY_DIR}/${file_name}
+      COPYONLY
+    )
 endforeach()
 
-#----------------------------------------------------------------------------
-# For internal Geant4 use - but has no effect if you build this
-# example standalone
-#
-add_custom_target(nucTech_exec DEPENDS nucTech)
+# Set the build directory path
+set(BUILD_DIR "${PROJECT_BINARY_DIR}")
 
 #----------------------------------------------------------------------------
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
-#
-install(TARGETS nucTech DESTINATION bin)
+install(TARGETS nuctech DESTINATION bin)
