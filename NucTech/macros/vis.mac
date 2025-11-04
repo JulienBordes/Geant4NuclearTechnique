@@ -16,5 +16,3 @@
 /vis/modeling/trajectories/drawByCharge-0/default/setLineWidth 2
 /vis/scene/add/axes 0 0 0 50. cm
 /vis/scene/endOfEventAction accumulate
-
-/control/execute beam.mac
