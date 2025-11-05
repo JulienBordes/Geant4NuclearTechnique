@@ -3,8 +3,8 @@
 #include <TH1.h>
 #include <TH2.h>
 #include <TRandom.h>
-#include <TStyle.h>
 #include <TString.h>
+#include <TStyle.h>
 #include <TTree.h>
 #include <TTreeReader.h>
 
@@ -12,48 +12,60 @@
 #include <iostream>
 
 // Struct to encapsulate histogram decoration parameters
-struct HistogramDecoration
-{
-  int         lineWidth      = -1;
-  int         lineColor      = -1;
-  const char *xTitle        = nullptr;
-  const char *yTitle        = nullptr;
-  const char *zTitle        = nullptr;
-  double      xRangeMin      = 0.;
-  double      xRangeMax      = 0.;
-  double      yRangeMin      = 0.;
-  double      yRangeMax      = 0.;
+struct HistogramDecoration {
+  int lineWidth = -1;
+  int lineColor = -1;
+  const char *xTitle = nullptr;
+  const char *yTitle = nullptr;
+  const char *zTitle = nullptr;
+  double xRangeMin = 0.;
+  double xRangeMax = 0.;
+  double yRangeMin = 0.;
+  double yRangeMax = 0.;
 };
 
 // Function to show the progress bar
-void PrintProgressBar(
-  const int progress, 
-  const int nHits, 
-  const int barWidth = 50);
+void PrintProgressBar(const int progress, const int nHits,
+                      const int barWidth = 50);
 
 void DecorateHistogram(TH1 *hist, const HistogramDecoration &decoration);
 
-void processSim(
-  const TString inFileName   = "out.root",
-  const TString outFileName  = "energyDistribution.png",
-  const int     nEvts        = -1,
-  const double  E_threshold  = 0.,
-  const double  E_resolution = 0.)
-{
+void process_sim(const TString inFileName = "out.root",
+                 TString outFileName = "", const int nEvts = -1,
+                 const double E_threshold = 0.,
+                 const double E_resolution = 0.) {
   // Open the input file
   TFile *file_input = TFile::Open(inFileName);
-  if (!file_input || file_input->IsZombie())
-  {
-    std::cerr << "Error: Unable to open file " 
-              << inFileName << std::endl;
+  if (!file_input || file_input->IsZombie()) {
+    std::cerr << "Error: Unable to open file " << inFileName << std::endl;
+    return;
+  }
+
+  TString outFileName_png;
+  TString outFileName_root;
+
+  if (outFileName.IsNull() || outFileName == "") {
+    TString baseName = inFileName;
+    baseName.ReplaceAll(".root", "");
+    outFileName_png = Form("%s_summary.png", baseName.Data());
+    outFileName_root = Form("%s_summary.root", baseName.Data());
+  }
+
+  else {
+    outFileName_png = outFileName + "_summary.png";
+    outFileName_root = outFileName + "_summary.root";
+  }
+
+  std::unique_ptr<TFile> outFile_root(new TFile(outFileName_root, "RECREATE"));
+  if (!outFile_root || outFile_root->IsZombie()) {
+    std::cerr << "Failed to create ROOT output file " << outFileName << "\n";
     return;
   }
 
   // Process the energy spectrum TTree
-  TTree *tree1 = (TTree*)file_input->Get("EnergySpectrum");
-  if (!tree1)
-  {
-    std::cerr << "Error: TTree 'EnergySpectrum' not found in file " 
+  TTree *tree1 = (TTree *)file_input->Get("EnergySpectrum");
+  if (!tree1) {
+    std::cerr << "Error: TTree 'EnergySpectrum' not found in file "
               << inFileName << std::endl;
     return;
   }
@@ -64,52 +76,46 @@ void processSim(
   std::cout << nEvents << " primary particles found." << std::endl;
 
   constexpr int spectrumBins = 50;
-  constexpr double spectrumMin  = 0.0;
+  constexpr double spectrumMin = 0.0;
 
   // Scan the TTree to find the maximum EdepEvent during the simulation
   double spectrumMax = -1.0;
-  while (reader1.Next()) 
-  {
+  while (reader1.Next()) {
     if (*EdepEvent > spectrumMax)
-        spectrumMax = *EdepEvent;
+      spectrumMax = *EdepEvent;
   }
 
   spectrumMax *= 1.1;
 
   reader1.Restart();
 
-  TH1D *spectrum = new TH1D("spectrum", "",
-                            spectrumBins, spectrumMin, spectrumMax);
+  TH1D *spectrum =
+      new TH1D("spectrum", "", spectrumBins, spectrumMin, spectrumMax);
 
   // Count detected particles for efficiency
   int count = 0;
-  double resolutionFactor = E_resolution / (100. * 2.355);
+  const double resolutionFactor = E_resolution / (100. * 2.355);
 
-  while (reader1.Next())
-  {
-    double Edep_meas = gRandom->Gaus(
-      *EdepEvent, resolutionFactor * (*EdepEvent));
+  while (reader1.Next()) {
+    double Edep_meas =
+        gRandom->Gaus(*EdepEvent, resolutionFactor * (*EdepEvent));
 
-    if (Edep_meas > E_threshold)
-    {
+    if (Edep_meas > E_threshold) {
       ++count;
       spectrum->Fill(Edep_meas);
     }
   }
 
-  if (nEvts > 0)
-  {
+  if (nEvts > 0) {
     double efficiency = static_cast<double>(count) * 100. / nEvts;
-    std::cout << "Detection efficiency = " 
-              << std::setprecision(3) << efficiency << "%" 
-              << std::endl;
+    std::cout << "Detection efficiency = " << std::setprecision(3) << efficiency
+              << "%" << std::endl;
   }
 
   // Process the individual hits TTree
-  TTree *tree2 = (TTree*)file_input->Get("IndividualHits");
-  if (!tree2)
-  {
-    std::cerr << "Error: TTree 'IndividualHits' not found in file " 
+  TTree *tree2 = (TTree *)file_input->Get("IndividualHits");
+  if (!tree2) {
+    std::cerr << "Error: TTree 'IndividualHits' not found in file "
               << inFileName << std::endl;
     return;
   }
@@ -121,7 +127,7 @@ void processSim(
   TTreeReaderValue<double> hitZ(reader2, "HitZ");
 
   const int nHits = tree2->GetEntries();
-  std::cout  << "Processing " << nHits << " hits" << std::endl;
+  std::cout << "Processing " << nHits << " hits" << std::endl;
 
   constexpr int zBins = 300;
   constexpr int xyBins = 300;
@@ -130,23 +136,18 @@ void processSim(
   constexpr double yRange = 15.0;
   constexpr double zMax = 30.0;
 
-  TH1D *EdepZ_distr = new TH1D("EdepZ_distr", "",
-                               zBins, 0.0, zMax);
+  TH1D *EdepZ_distr = new TH1D("EdepZ_distr", "", zBins, 0.0, zMax);
 
-  TH2D *EdepXY_distr = new TH2D("EdepXY_distr", "",
-                                xyBins, -xRange, xRange, 
+  TH2D *EdepXY_distr = new TH2D("EdepXY_distr", "", xyBins, -xRange, xRange,
                                 xyBins, -yRange, yRange);
 
-  TH2D *EdepZY_distr = new TH2D("EdepZY_distr", "",
-                                zBins, 0.0, zMax, 
-                                xyBins, -yRange, yRange);
+  TH2D *EdepZY_distr =
+      new TH2D("EdepZY_distr", "", zBins, 0.0, zMax, xyBins, -yRange, yRange);
 
   int progressCount = 0;
 
-  while (reader2.Next())
-  {
-    if (progressCount % 10000 == 0 || progressCount == nHits - 1)
-    {
+  while (reader2.Next()) {
+    if (progressCount % 10000 == 0 || progressCount == nHits - 1) {
       PrintProgressBar(progressCount, nHits);
     }
 
@@ -159,58 +160,29 @@ void processSim(
 
   PrintProgressBar(nHits, nHits);
 
+  // Write all histograms to the ROOT output file
+  outFile_root->cd();
+  spectrum->Write();
+  EdepZ_distr->Write();
+  EdepXY_distr->Write();
+  EdepZY_distr->Write();
+
   // Apply decorations
-  HistogramDecoration spectrumDecoration = 
-  {
-    2, 
-    kBlack, 
-    "Energy deposited (MeV)", 
-    "Count", 
-    nullptr, 
-    0., 
-    spectrumMax, 
-    0., 
-    0.
-  };
+  HistogramDecoration spectrumDecoration = {
+      2,  kBlack, "Energy deposited (MeV)", "Count", nullptr, 0., spectrumMax,
+      0., 0.};
 
-  HistogramDecoration depthDecoration = 
-  {
-    2, 
-    kRed, 
-    "Depth (cm)", 
-    "Energy deposited (MeV)", 
-    nullptr, 
-    0., 
-    zMax, 
-    0., 
-    0.
-  };
+  HistogramDecoration depthDecoration = {
+      2,  kRed, "Depth (cm)", "Energy deposited (MeV)", nullptr, 0., zMax,
+      0., 0.};
 
-  HistogramDecoration xyDecoration = 
-  {
-    -1, 
-    -1, 
-    "X (cm)", 
-    "Y (cm)", 
-    "Energy deposited (MeV)", 
-    -xRange, 
-    xRange, 
-    -yRange, 
-    yRange
-  };
+  HistogramDecoration xyDecoration = {
+      -1,      -1,     "X (cm)", "Y (cm)", "Energy deposited (MeV)",
+      -xRange, xRange, -yRange,  yRange};
 
-  HistogramDecoration zyDecoration = 
-  {
-    -1, 
-    -1, 
-    "Depth (cm)", 
-    "Y (cm)", 
-    "Energy deposited (MeV)", 
-    0., 
-    zMax, 
-    -xRange, 
-    xRange
-  };
+  HistogramDecoration zyDecoration = {
+      -1, -1,   "Depth (cm)", "Y (cm)", "Energy deposited (MeV)",
+      0., zMax, -xRange,      xRange};
 
   // Apply decorations to histograms
   DecorateHistogram(spectrum, spectrumDecoration);
@@ -223,7 +195,7 @@ void processSim(
 
   TCanvas *C1 = new TCanvas("C1", "Histograms", 900, 825);
 
-  C1->Divide(2, 2);  // Divide canvas into 4 pads
+  C1->Divide(2, 2); // Divide canvas into 4 pads
   gStyle->SetPalette(kRainBow);
   gStyle->SetNumberContours(100);
 
@@ -242,7 +214,7 @@ void processSim(
   // Pad 3 (Energy distribution in the XY plane)
   C1->cd(3);
   gPad->SetLeftMargin(0.15);
-  gPad->SetRightMargin(0.20); 
+  gPad->SetRightMargin(0.20);
   EdepXY_distr->Draw("COLZ");
 
   // Pad 4 (Energy distribution in the ZY plane)
@@ -253,42 +225,34 @@ void processSim(
 
   // Update canvas and save output
   C1->Update();
-  C1->Print(outFileName);
+  C1->Print(outFileName_png);
 }
 
 // Function to apply uniform decorations to histograms
-void DecorateHistogram(TH1 *hist, const HistogramDecoration &decoration)
-{
+void DecorateHistogram(TH1 *hist, const HistogramDecoration &decoration) {
   // Apply line width and color for 1D histograms
-  if (decoration.lineWidth > 0)
-  {
+  if (decoration.lineWidth > 0) {
     hist->SetLineWidth(decoration.lineWidth);
   }
 
-  if (decoration.lineColor > 0)
-  {
+  if (decoration.lineColor > 0) {
     hist->SetLineColor(decoration.lineColor);
   }
 
   // Set axis ranges if specified
-  if (decoration.xRangeMax > decoration.xRangeMin)
-  {
-    hist->GetXaxis()->SetRangeUser(decoration.xRangeMin,
-                                   decoration.xRangeMax);
+  if (decoration.xRangeMax > decoration.xRangeMin) {
+    hist->GetXaxis()->SetRangeUser(decoration.xRangeMin, decoration.xRangeMax);
   }
 
-  if (decoration.yRangeMax > decoration.yRangeMin)
-  {
-    hist->GetYaxis()->SetRangeUser(decoration.yRangeMin,
-                                   decoration.yRangeMax);
+  if (decoration.yRangeMax > decoration.yRangeMin) {
+    hist->GetYaxis()->SetRangeUser(decoration.yRangeMin, decoration.yRangeMax);
   }
 
   // Set axis titles
   hist->GetXaxis()->SetTitle(decoration.xTitle);
   hist->GetYaxis()->SetTitle(decoration.yTitle);
 
-  if (decoration.zTitle)
-  {
+  if (decoration.zTitle) {
     hist->GetZaxis()->SetTitle(decoration.zTitle);
   }
 
@@ -296,8 +260,7 @@ void DecorateHistogram(TH1 *hist, const HistogramDecoration &decoration)
   hist->GetXaxis()->CenterTitle();
   hist->GetYaxis()->CenterTitle();
 
-  if (decoration.zTitle)
-  {
+  if (decoration.zTitle) {
     hist->GetZaxis()->CenterTitle();
   }
 
@@ -309,38 +272,32 @@ void DecorateHistogram(TH1 *hist, const HistogramDecoration &decoration)
   hist->GetXaxis()->SetTitleSize(0.05);
   hist->GetYaxis()->SetTitleSize(0.05);
 
-  if (decoration.zTitle)
-  {
+  if (decoration.zTitle) {
     hist->GetZaxis()->SetTitleSize(0.05);
     hist->GetZaxis()->SetTitleOffset(1.3);
   }
 }
 
-void PrintProgressBar(const int progress, const int total, const int barWidth) 
-{
+void PrintProgressBar(const int progress, const int total, const int barWidth) {
   const float percentage = (float)progress / total;
   const int pos = barWidth * percentage;
 
   std::cout << "[";
 
-  for (int i = 0; i < barWidth; ++i) 
-  {
-    if (i < pos)
-    {
+  for (int i = 0; i < barWidth; ++i) {
+    if (i < pos) {
       std::cout << "=";
     }
 
-    else if (i == pos)
-    {
+    else if (i == pos) {
       std::cout << ">";
     }
 
-    else 
-    {
+    else {
       std::cout << " ";
     }
   }
-  
+
   std::cout << "] " << int(percentage * 100.) << "%\r";
   std::cout.flush();
 }

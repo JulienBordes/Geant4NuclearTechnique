@@ -7,5 +7,3 @@
 
 /gps/ang/type iso
 /gps/position 0. 0. 15. cm
-
-/run/beamOn 10

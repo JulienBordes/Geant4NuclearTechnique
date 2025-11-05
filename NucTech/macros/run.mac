@@ -9,3 +9,5 @@
 /run/initialize
 
 /control/execute beam.mac
+
+/run/beamOn 10000

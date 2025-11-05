@@ -5,5 +5,3 @@
 /gps/particle ion
 /gps/ion 6 12
 /gps/energy 4800 MeV
-
-/run/beamOn 1

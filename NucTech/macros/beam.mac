@@ -5,4 +5,3 @@
 # Beam energy
 /gps/particle e-
 /gps/ene/mono 50 MeV
-/run/beamOn 1

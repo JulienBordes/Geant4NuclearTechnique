@@ -7,10 +7,9 @@ NucTechRunAction::NucTechRunAction(const G4String &outFileName)
     : fOutputFileName(outFileName) {
   auto *mgr = G4AnalysisManager::Instance();
 
-// Enable merging BEFORE booking (important in MT)
-#ifdef G4MULTITHREADED
+  // Enable merging BEFORE booking (important in MT)
+  mgr->SetDefaultFileType("root");
   mgr->SetNtupleMerging(true);
-#endif
 
   mgr->SetFirstNtupleId(1);
 
@@ -32,7 +31,6 @@ void NucTechRunAction::BeginOfRunAction(const G4Run * /*run*/) {
   G4AnalysisManager *mgr = G4AnalysisManager::Instance();
 
   mgr->SetVerboseLevel(0);
-  // mgr->SetNtupleMerging(true);
 
   const G4bool fileOpen = mgr->OpenFile(fOutputFileName);
 

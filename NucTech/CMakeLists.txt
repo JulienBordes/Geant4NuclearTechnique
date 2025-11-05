@@ -47,6 +47,7 @@ set(nuctech_FILES
   macros/quiet.mac
   macros/run.mac
   macros/vis.mac
+  process_sim.C
 )
 
 foreach(_file ${nuctech_FILES})
