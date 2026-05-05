@@ -4,14 +4,27 @@
 #include "G4Run.hh"
 
 NucTechRunAction::NucTechRunAction(const G4String &outFileName)
-    : fOutputFileName(outFileName) {
-  auto *mgr = G4AnalysisManager::Instance();
+    : fOutputFileName(outFileName) {}
 
-  // Enable merging BEFORE booking (important in MT)
+NucTechRunAction::~NucTechRunAction() = default;
+
+void NucTechRunAction::BeginOfRunAction(const G4Run * /*run*/) {
+  G4AnalysisManager *mgr = G4AnalysisManager::Instance();
+
   mgr->SetDefaultFileType("root");
   mgr->SetNtupleMerging(true);
+  // mgr->SetFirstNtupleId(1);
 
-  mgr->SetFirstNtupleId(1);
+  const G4bool fileOpen = mgr->OpenFile(fOutputFileName);
+
+  if (!fileOpen) {
+    const G4String errorMessage =
+        "Could not open the output file: " + mgr->GetFileName();
+
+    G4Exception("NucTechRunAction::BeginOfRunAction", "FileOpenError",
+                FatalException, errorMessage.c_str());
+    return;
+  }
 
   mgr->CreateNtuple("EnergySpectrum", "NucTech");
   mgr->CreateNtupleDColumn("EventEdep");
@@ -23,29 +36,9 @@ NucTechRunAction::NucTechRunAction(const G4String &outFileName)
   mgr->CreateNtupleDColumn("HitY");
   mgr->CreateNtupleDColumn("HitZ");
   mgr->FinishNtuple();
-}
-
-NucTechRunAction::~NucTechRunAction() = default;
-
-void NucTechRunAction::BeginOfRunAction(const G4Run * /*run*/) {
-  G4AnalysisManager *mgr = G4AnalysisManager::Instance();
-
-  mgr->SetVerboseLevel(0);
-
-  const G4bool fileOpen = mgr->OpenFile(fOutputFileName);
-
-  if (fileOpen) {
-    if (IsMaster()) {
-      G4cout << "Opening: " << mgr->GetFileName() << G4endl;
-    }
-  } else {
-    std::string errorMessage =
-        "Could not open the output file: " + mgr->GetFileName();
-    G4Exception("NucTechRunAction::BeginOfRunAction", "FileOpenError",
-                FatalException, errorMessage.c_str());
-  }
 
   if (IsMaster()) {
+    G4cout << "Opening: " << mgr->GetFileName() << G4endl;
     fTimer.Start();
   }
 }
