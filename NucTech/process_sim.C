@@ -1,4 +1,5 @@
 #include <TCanvas.h>
+#include <TColor.h>
 #include <TFile.h>
 #include <TH1.h>
 #include <TH2.h>
@@ -10,6 +11,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <memory>
 
 // Struct to encapsulate histogram decoration parameters
 struct HistogramDecoration {
@@ -29,6 +31,7 @@ void PrintProgressBar(const int progress, const int nHits,
                       const int barWidth = 50);
 
 void DecorateHistogram(TH1 *hist, const HistogramDecoration &decoration);
+void ApplyCustomPalette();
 
 void process_sim(const TString inFileName = "out.root",
                  TString outFileName = "", const int nEvts = -1,
@@ -192,12 +195,11 @@ void process_sim(const TString inFileName = "out.root",
 
   // Plot histograms
   gStyle->SetOptStat(0);
+  ApplyCustomPalette();
 
   TCanvas *C1 = new TCanvas("C1", "Histograms", 900, 825);
 
   C1->Divide(2, 2); // Divide canvas into 4 pads
-  gStyle->SetPalette(kRainBow);
-  gStyle->SetNumberContours(100);
 
   // Pad 1 (Energy spectrum)
   C1->cd(1);
@@ -226,6 +228,18 @@ void process_sim(const TString inFileName = "out.root",
   // Update canvas and save output
   C1->Update();
   C1->Print(outFileName_png);
+}
+
+// Custom gradient for both 2D energy-deposition plots
+void ApplyCustomPalette() {
+  const UInt_t Number = 4;
+  Double_t Stops[Number] = {0.00, 0.30, 0.70, 0.99};
+  Double_t Red[Number] = {0.50, 0.00, 0.99, 0.99};
+  Double_t Green[Number] = {0.99, 0.00, 0.00, 0.99};
+  Double_t Blue[Number] = {0.99, 0.99, 0.00, 0.00};
+
+  TColor::CreateGradientColorTable(Number, Stops, Red, Green, Blue, 100);
+  gStyle->SetNumberContours(100);
 }
 
 // Function to apply uniform decorations to histograms
