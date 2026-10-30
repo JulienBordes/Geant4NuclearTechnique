@@ -23,7 +23,7 @@ G4VPhysicalVolume *NucTechDetectorConstruction::Construct() {
   // Materials
   G4NistManager *nist = G4NistManager::Instance();
   G4Material *world_mat = nist->FindOrBuildMaterial("G4_AIR");
-  G4Material *det_mat = nist->FindOrBuildMaterial("G4_WATER");
+  G4Material *det_mat = nist->FindOrBuildMaterial("G4_Si");
 
   // Definition of the volumes - exeperimental hall and phantom
 
@@ -42,15 +42,12 @@ G4VPhysicalVolume *NucTechDetectorConstruction::Construct() {
 
   /***** Detector *****/
 
-  // Half-lengths at the two Z faces
-  G4double det_halfX1 = 5. * cm;
-  G4double det_halfX2 = 10. * cm;
-  G4double det_halfY1 = 5. * cm;
-  G4double det_halfY2 = 10. * cm;
-  G4double det_halfDepth = 25. * cm;
+  G4double det_halfX = 15. * cm;
+  G4double det_halfY = 15. * cm;
+  G4double det_halfDepth = 15. * cm;
 
-  G4VSolid *det_solid = new G4Trd("Detector", det_halfX1, det_halfX2,
-                                  det_halfY1, det_halfY2, det_halfDepth);
+  G4VSolid *det_solid =
+      new G4Box("Detector", det_halfX, det_halfY, det_halfDepth);
 
   G4LogicalVolume *det_logical =
       new G4LogicalVolume(det_solid, det_mat, "Detector");

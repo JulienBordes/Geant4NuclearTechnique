@@ -27,14 +27,14 @@ void NucTechRunAction::BeginOfRunAction(const G4Run * /*run*/) {
   }
 
   mgr->CreateNtuple("EnergySpectrum", "NucTech");
-  mgr->CreateNtupleDColumn("EventEdep");
+  mgr->CreateNtupleFColumn("EventEdep");
   mgr->FinishNtuple();
 
   mgr->CreateNtuple("IndividualHits", "NucTech");
-  mgr->CreateNtupleDColumn("HitEdep");
-  mgr->CreateNtupleDColumn("HitX");
-  mgr->CreateNtupleDColumn("HitY");
-  mgr->CreateNtupleDColumn("HitZ");
+  mgr->CreateNtupleFColumn("HitEdep");
+  mgr->CreateNtupleFColumn("HitX");
+  mgr->CreateNtupleFColumn("HitY");
+  mgr->CreateNtupleFColumn("HitZ");
   mgr->FinishNtuple();
 
   if (IsMaster()) {

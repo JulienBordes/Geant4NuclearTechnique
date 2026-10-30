@@ -1,3 +1,4 @@
+
 #include <TCanvas.h>
 #include <TColor.h>
 #include <TFile.h>
@@ -8,6 +9,7 @@
 #include <TStyle.h>
 #include <TTree.h>
 #include <TTreeReader.h>
+#include <TTreeReaderValue.h>
 
 #include <iomanip>
 #include <iostream>
@@ -26,19 +28,25 @@ struct HistogramDecoration {
   double yRangeMax = 0.;
 };
 
-// Function to show the progress bar
+// Function declarations
 void PrintProgressBar(const int progress, const int nHits,
                       const int barWidth = 50);
 
 void DecorateHistogram(TH1 *hist, const HistogramDecoration &decoration);
+
 void ApplyCustomPalette();
 
+// --------------------------------------------------
+// Main analysis
+// --------------------------------------------------
 void process_sim(const TString inFileName = "out.root",
                  TString outFileName = "", const int nEvts = -1,
                  const double E_threshold = 0.,
                  const double E_resolution = 0.) {
+
   // Open the input file
   TFile *file_input = TFile::Open(inFileName);
+
   if (!file_input || file_input->IsZombie()) {
     std::cerr << "Error: Unable to open file " << inFileName << std::endl;
     return;
@@ -50,23 +58,27 @@ void process_sim(const TString inFileName = "out.root",
   if (outFileName.IsNull() || outFileName == "") {
     TString baseName = inFileName;
     baseName.ReplaceAll(".root", "");
+
     outFileName_png = Form("%s_summary.png", baseName.Data());
     outFileName_root = Form("%s_summary.root", baseName.Data());
-  }
-
-  else {
+  } else {
     outFileName_png = outFileName + "_summary.png";
     outFileName_root = outFileName + "_summary.root";
   }
 
   std::unique_ptr<TFile> outFile_root(new TFile(outFileName_root, "RECREATE"));
+
   if (!outFile_root || outFile_root->IsZombie()) {
-    std::cerr << "Failed to create ROOT output file " << outFileName << "\n";
+    std::cerr << "Failed to create ROOT output file " << outFileName_root
+              << "\n";
     return;
   }
 
+  // --------------------------------------------------
   // Process the energy spectrum TTree
+  // --------------------------------------------------
   TTree *tree1 = (TTree *)file_input->Get("EnergySpectrum");
+
   if (!tree1) {
     std::cerr << "Error: TTree 'EnergySpectrum' not found in file "
               << inFileName << std::endl;
@@ -74,15 +86,20 @@ void process_sim(const TString inFileName = "out.root",
   }
 
   TTreeReader reader1(tree1);
-  TTreeReaderValue<double> EdepEvent(reader1, "EventEdep");
+
+  // Read float branches created with CreateNtupleFColumn
+  TTreeReaderValue<Float_t> EdepEvent(reader1, "EventEdep");
+
   const int nEvents = tree1->GetEntries();
+
   std::cout << nEvents << " primary particles found." << std::endl;
 
   constexpr int spectrumBins = 50;
   constexpr double spectrumMin = 0.0;
 
-  // Scan the TTree to find the maximum EdepEvent during the simulation
+  // Find maximum event energy deposition
   double spectrumMax = -1.0;
+
   while (reader1.Next()) {
     if (*EdepEvent > spectrumMax)
       spectrumMax = *EdepEvent;
@@ -97,9 +114,11 @@ void process_sim(const TString inFileName = "out.root",
 
   // Count detected particles for efficiency
   int count = 0;
+
   const double resolutionFactor = E_resolution / (100. * 2.355);
 
   while (reader1.Next()) {
+
     double Edep_meas =
         gRandom->Gaus(*EdepEvent, resolutionFactor * (*EdepEvent));
 
@@ -111,12 +130,16 @@ void process_sim(const TString inFileName = "out.root",
 
   if (nEvts > 0) {
     double efficiency = static_cast<double>(count) * 100. / nEvts;
+
     std::cout << "Detection efficiency = " << std::setprecision(3) << efficiency
               << "%" << std::endl;
   }
 
+  // --------------------------------------------------
   // Process the individual hits TTree
+  // --------------------------------------------------
   TTree *tree2 = (TTree *)file_input->Get("IndividualHits");
+
   if (!tree2) {
     std::cerr << "Error: TTree 'IndividualHits' not found in file "
               << inFileName << std::endl;
@@ -124,17 +147,20 @@ void process_sim(const TString inFileName = "out.root",
   }
 
   TTreeReader reader2(tree2);
-  TTreeReaderValue<double> hitEdep(reader2, "HitEdep");
-  TTreeReaderValue<double> hitX(reader2, "HitX");
-  TTreeReaderValue<double> hitY(reader2, "HitY");
-  TTreeReaderValue<double> hitZ(reader2, "HitZ");
+
+  // Read float branches created with CreateNtupleFColumn
+  TTreeReaderValue<Float_t> hitEdep(reader2, "HitEdep");
+  TTreeReaderValue<Float_t> hitX(reader2, "HitX");
+  TTreeReaderValue<Float_t> hitY(reader2, "HitY");
+  TTreeReaderValue<Float_t> hitZ(reader2, "HitZ");
 
   const int nHits = tree2->GetEntries();
+
   std::cout << "Processing " << nHits << " hits" << std::endl;
 
   constexpr int zBins = 300;
   constexpr int xyBins = 300;
-  constexpr int xzBins = 300;
+
   constexpr double xRange = 15.0;
   constexpr double yRange = 15.0;
   constexpr double zMax = 30.0;
@@ -150,6 +176,7 @@ void process_sim(const TString inFileName = "out.root",
   int progressCount = 0;
 
   while (reader2.Next()) {
+
     if (progressCount % 10000 == 0 || progressCount == nHits - 1) {
       PrintProgressBar(progressCount, nHits);
     }
@@ -163,14 +190,19 @@ void process_sim(const TString inFileName = "out.root",
 
   PrintProgressBar(nHits, nHits);
 
-  // Write all histograms to the ROOT output file
+  // --------------------------------------------------
+  // Write histograms to ROOT file
+  // --------------------------------------------------
   outFile_root->cd();
+
   spectrum->Write();
   EdepZ_distr->Write();
   EdepXY_distr->Write();
   EdepZY_distr->Write();
 
-  // Apply decorations
+  // --------------------------------------------------
+  // Histogram decorations
+  // --------------------------------------------------
   HistogramDecoration spectrumDecoration = {
       2,  kBlack, "Energy deposited (MeV)", "Count", nullptr, 0., spectrumMax,
       0., 0.};
@@ -185,66 +217,77 @@ void process_sim(const TString inFileName = "out.root",
 
   HistogramDecoration zyDecoration = {
       -1, -1,   "Depth (cm)", "Y (cm)", "Energy deposited (MeV)",
-      0., zMax, -xRange,      xRange};
+      0., zMax, -yRange,      yRange};
 
-  // Apply decorations to histograms
   DecorateHistogram(spectrum, spectrumDecoration);
   DecorateHistogram(EdepZ_distr, depthDecoration);
   DecorateHistogram(EdepXY_distr, xyDecoration);
   DecorateHistogram(EdepZY_distr, zyDecoration);
 
+  // --------------------------------------------------
   // Plot histograms
+  // --------------------------------------------------
   gStyle->SetOptStat(0);
   ApplyCustomPalette();
 
   TCanvas *C1 = new TCanvas("C1", "Histograms", 900, 825);
 
-  C1->Divide(2, 2); // Divide canvas into 4 pads
+  C1->Divide(2, 2);
 
-  // Pad 1 (Energy spectrum)
+  // Pad 1: Energy spectrum
   C1->cd(1);
   gPad->SetLeftMargin(0.15);
   gPad->SetRightMargin(0.05);
   spectrum->Draw("HIST");
 
-  // Pad 2 (Energy deposited vs. phantom depth)
+  // Pad 2: Energy deposited vs phantom depth
   C1->cd(2);
   gPad->SetLeftMargin(0.15);
   gPad->SetRightMargin(0.05);
   EdepZ_distr->Draw("HIST");
 
-  // Pad 3 (Energy distribution in the XY plane)
+  // Pad 3: Energy distribution in XY plane
   C1->cd(3);
   gPad->SetLeftMargin(0.15);
   gPad->SetRightMargin(0.20);
   EdepXY_distr->Draw("COLZ");
 
-  // Pad 4 (Energy distribution in the ZY plane)
+  // Pad 4: Energy distribution in ZY plane
   C1->cd(4);
   gPad->SetLeftMargin(0.15);
   gPad->SetRightMargin(0.20);
   EdepZY_distr->Draw("COLZ");
 
-  // Update canvas and save output
+  // Update canvas and save
   C1->Update();
   C1->Print(outFileName_png);
 }
 
-// Custom gradient for both 2D energy-deposition plots
+// --------------------------------------------------
+// Custom colour palette for 2D histograms
+// --------------------------------------------------
 void ApplyCustomPalette() {
+
   const UInt_t Number = 4;
+
   Double_t Stops[Number] = {0.00, 0.30, 0.70, 0.99};
+
   Double_t Red[Number] = {0.50, 0.00, 0.99, 0.99};
+
   Double_t Green[Number] = {0.99, 0.00, 0.00, 0.99};
+
   Double_t Blue[Number] = {0.99, 0.99, 0.00, 0.00};
 
   TColor::CreateGradientColorTable(Number, Stops, Red, Green, Blue, 100);
+
   gStyle->SetNumberContours(100);
 }
 
-// Function to apply uniform decorations to histograms
+// --------------------------------------------------
+// Histogram decoration
+// --------------------------------------------------
 void DecorateHistogram(TH1 *hist, const HistogramDecoration &decoration) {
-  // Apply line width and color for 1D histograms
+
   if (decoration.lineWidth > 0) {
     hist->SetLineWidth(decoration.lineWidth);
   }
@@ -253,7 +296,6 @@ void DecorateHistogram(TH1 *hist, const HistogramDecoration &decoration) {
     hist->SetLineColor(decoration.lineColor);
   }
 
-  // Set axis ranges if specified
   if (decoration.xRangeMax > decoration.xRangeMin) {
     hist->GetXaxis()->SetRangeUser(decoration.xRangeMin, decoration.xRangeMax);
   }
@@ -262,7 +304,6 @@ void DecorateHistogram(TH1 *hist, const HistogramDecoration &decoration) {
     hist->GetYaxis()->SetRangeUser(decoration.yRangeMin, decoration.yRangeMax);
   }
 
-  // Set axis titles
   hist->GetXaxis()->SetTitle(decoration.xTitle);
   hist->GetYaxis()->SetTitle(decoration.yTitle);
 
@@ -270,7 +311,6 @@ void DecorateHistogram(TH1 *hist, const HistogramDecoration &decoration) {
     hist->GetZaxis()->SetTitle(decoration.zTitle);
   }
 
-  // Center axis titles
   hist->GetXaxis()->CenterTitle();
   hist->GetYaxis()->CenterTitle();
 
@@ -278,11 +318,12 @@ void DecorateHistogram(TH1 *hist, const HistogramDecoration &decoration) {
     hist->GetZaxis()->CenterTitle();
   }
 
-  // Set title and label sizes
   hist->GetXaxis()->SetTitleOffset(0.9);
   hist->GetYaxis()->SetTitleOffset(1.5);
+
   hist->GetXaxis()->SetLabelSize(0.04);
   hist->GetYaxis()->SetLabelSize(0.04);
+
   hist->GetXaxis()->SetTitleSize(0.05);
   hist->GetYaxis()->SetTitleSize(0.05);
 
@@ -292,26 +333,32 @@ void DecorateHistogram(TH1 *hist, const HistogramDecoration &decoration) {
   }
 }
 
+// --------------------------------------------------
+// Progress bar
+// --------------------------------------------------
 void PrintProgressBar(const int progress, const int total, const int barWidth) {
-  const float percentage = (float)progress / total;
+
+  if (total <= 0)
+    return;
+
+  const float percentage = static_cast<float>(progress) / total;
+
   const int pos = barWidth * percentage;
 
   std::cout << "[";
 
   for (int i = 0; i < barWidth; ++i) {
+
     if (i < pos) {
       std::cout << "=";
-    }
-
-    else if (i == pos) {
+    } else if (i == pos) {
       std::cout << ">";
-    }
-
-    else {
+    } else {
       std::cout << " ";
     }
   }
 
   std::cout << "] " << int(percentage * 100.) << "%\r";
+
   std::cout.flush();
 }

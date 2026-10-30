@@ -25,18 +25,18 @@ void NucTechSteppingAction::EndOfEventAction() {
   const G4double Edep_event =
       std::accumulate(fV_hitEdep.begin(), fV_hitEdep.end(), 0.);
 
-  mgr->FillNtupleDColumn(0, 0, Edep_event / MeV);
+  mgr->FillNtupleFColumn(0, 0, static_cast<G4float>(Edep_event / MeV));
   mgr->AddNtupleRow(0);
 
-  // Then record the individual hit energy and coordinates of this event
+  // Record individual hits
   for (std::size_t i = 0; i < fV_hitEdep.size(); i++) {
-    auto energy = fV_hitEdep[i] / MeV;
-    auto position = fV_hitPos[i];
+    const auto energy = fV_hitEdep[i] / MeV;
+    const auto position = fV_hitPos[i];
 
-    mgr->FillNtupleDColumn(1, 0, energy);
-    mgr->FillNtupleDColumn(1, 1, position.x() / cm);
-    mgr->FillNtupleDColumn(1, 2, position.y() / cm);
-    mgr->FillNtupleDColumn(1, 3, position.z() / cm);
+    mgr->FillNtupleFColumn(1, 0, static_cast<G4float>(energy));
+    mgr->FillNtupleFColumn(1, 1, static_cast<G4float>(position.x() / cm));
+    mgr->FillNtupleFColumn(1, 2, static_cast<G4float>(position.y() / cm));
+    mgr->FillNtupleFColumn(1, 3, static_cast<G4float>(position.z() / cm));
     mgr->AddNtupleRow(1);
   }
 }
