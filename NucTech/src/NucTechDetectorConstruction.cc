@@ -23,7 +23,7 @@ G4VPhysicalVolume *NucTechDetectorConstruction::Construct() {
   // Materials
   G4NistManager *nist = G4NistManager::Instance();
   G4Material *world_mat = nist->FindOrBuildMaterial("G4_AIR");
-  G4Material *det_mat = nist->FindOrBuildMaterial("G4_Si");
+  G4Material *det_mat = nist->FindOrBuildMaterial("G4_WATER");
 
   // Definition of the volumes - exeperimental hall and phantom
 
