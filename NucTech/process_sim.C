@@ -250,12 +250,14 @@ void process_sim(const TString inFileName = "out.root",
   C1->cd(3);
   gPad->SetLeftMargin(0.15);
   gPad->SetRightMargin(0.20);
+  gPad->SetLogz();
   EdepXY_distr->Draw("COLZ");
 
   // Pad 4: Energy distribution in ZY plane
   C1->cd(4);
   gPad->SetLeftMargin(0.15);
   gPad->SetRightMargin(0.20);
+  gPad->SetLogz();
   EdepZY_distr->Draw("COLZ");
 
   // Update canvas and save
